@@ -201,70 +201,71 @@ function ServiceCard({ p }: { p: ProductStatus }) {
                     >
                         {h.label}
                     </Typography>
-                    {p.repo && (
-                        <Box
-                            component="a"
-                            href={`${p.repo}/issues`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Issues"
-                            sx={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                color: L.muted,
-                                textDecoration: "none",
-                                "&:hover": { color: L.text },
-                            }}
-                        >
-                            <GitHub sx={{ fontSize: "1rem" }} />
-                        </Box>
-                    )}
+                    <Box
+                        component="a"
+                        href={`${p.repo || REPO}/issues/new`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`Report an issue with ${p.label}`}
+                        sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            px: 1.25,
+                            py: 0.5,
+                            borderRadius: "7px",
+                            border: `1px solid ${L.border}`,
+                            color: L.muted,
+                            textDecoration: "none",
+                            fontSize: "0.74rem",
+                            fontWeight: 600,
+                            lineHeight: 1,
+                            "&:hover": {
+                                color: L.text,
+                                borderColor: L.muted,
+                                bgcolor: L.bg,
+                            },
+                        }}
+                    >
+                        <GitHub sx={{ fontSize: "0.95rem" }} />
+                        Report
+                    </Box>
                 </Box>
             </Box>
 
-            {p.seriesAvailable ? (
-                <>
-                    <UptimeBars
-                        days={p.days}
-                        target={is90 ? 90 : 24}
-                        window={p.window}
-                    />
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            mt: 1,
-                        }}
-                    >
-                        <Typography
-                            sx={{ color: L.muted, fontSize: "0.74rem" }}
-                        >
-                            {is90 ? "90 days ago" : "24 hours ago"}
-                        </Typography>
-                        <Typography
-                            sx={{
-                                color: L.muted,
-                                fontSize: "0.78rem",
-                                fontWeight: 600,
-                            }}
-                        >
-                            {p.total > 0
-                                ? `${p.uptimePct.toFixed(2)}% uptime`
-                                : "no traffic"}
-                        </Typography>
-                        <Typography
-                            sx={{ color: L.muted, fontSize: "0.74rem" }}
-                        >
-                            {is90 ? "Today" : "Now"}
-                        </Typography>
-                    </Box>
-                </>
-            ) : (
-                <Typography sx={{ color: L.muted, fontSize: "0.82rem" }}>
-                    Uptime history unavailable.
+            <UptimeBars
+                days={p.days}
+                target={is90 ? 90 : 24}
+                window={p.window}
+            />
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mt: 1,
+                }}
+            >
+                <Typography sx={{ color: L.muted, fontSize: "0.74rem" }}>
+                    {is90 ? "90 days ago" : "24 hours ago"}
                 </Typography>
-            )}
+                <Typography
+                    sx={{
+                        color: L.muted,
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                    }}
+                >
+                    {!p.seriesAvailable
+                        ? "history unavailable"
+                        : p.total > 0
+                          ? `${p.uptimePct.toFixed(2)}% uptime`
+                          : "no traffic"}
+                </Typography>
+                <Typography sx={{ color: L.muted, fontSize: "0.74rem" }}>
+                    {is90 ? "Today" : "Now"}
+                </Typography>
+            </Box>
         </Box>
     );
 }
