@@ -110,7 +110,7 @@ export default async function StatusPage() {
 
     const BASE = "elixpo.com";
     // Domains we never surface on the public status page.
-    const EXCLUDE = new Set(["url.elixpo.com"]);
+    const EXCLUDE = new Set(["url.elixpo.com", "career.elixpo.com"]);
 
     // Canonical service list — built from the registry's known product domains
     // unioned with discovered Pages projects. This is INDEPENDENT of zone

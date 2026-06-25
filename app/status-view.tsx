@@ -138,7 +138,6 @@ function ServiceCard({ p, hero = false }: { p: ProductStatus; hero?: boolean }) 
             sx={{
                 bgcolor: hero ? "#fbfdfc" : L.card,
                 border: `1px solid ${hero ? h.color : L.border}`,
-                borderLeft: hero ? `4px solid ${h.color}` : undefined,
                 borderRadius: hero ? "12px" : "10px",
                 p: hero ? { xs: 2.5, md: 3 } : 2.5,
                 boxShadow: hero ? "0 1px 2px rgba(28,25,23,0.04)" : "none",

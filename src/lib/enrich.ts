@@ -70,7 +70,6 @@ const META: Record<string, ProjectMeta> = {
     },
     lixsearch: { key: "search", label: "Search" },
     oreo: { key: "oreo", label: "Oreo", domain: "oreo.elixpo.com" },
-    career: { key: "career", label: "Career", domain: "career.elixpo.com" },
 
     // D1 databases (business tables filled in Phase 2 from each app's migrations)
     elixpo_auth: {

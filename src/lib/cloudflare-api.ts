@@ -4,10 +4,12 @@
  * - REST   : https://api.cloudflare.com/client/v4   (inventory + mutations)
  * - GraphQL: https://api.cloudflare.com/client/v4/graphql  (analytics/charts)
  *
- * Auth comes from the admin app's OWN dedicated, scoped token (CF_API_TOKEN),
- * kept separate from the wrangler/CI token (CLOUDFLARE_API_TOKEN) so the
- * dashboard's blast radius is isolated and independently revocable. The account
- * id falls back to CLOUDFLARE_ACCOUNT_ID since it's the same account.
+ * Auth for DATA operations (discovery + analytics) uses CF_API_TOKEN — a
+ * dedicated, read-scoped token that must carry Account/Zone Analytics Read for
+ * the GraphQL charts — and CF_ACCOUNT_ID. These are kept separate from the
+ * wrangler/CI deploy creds (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID) so the
+ * read token's blast radius is isolated and independently revocable. Account id
+ * falls back to CLOUDFLARE_ACCOUNT_ID since it's the same account.
  */
 
 import { getEnv, requireEnv } from "./env";
@@ -47,10 +49,7 @@ export class CloudflareApiError extends Error {
 }
 
 async function token(): Promise<string> {
-    // Prefer the dedicated, analytics-scoped read token; fall back to the
-    // wrangler/CI token so a single-token setup still works (it must carry
-    // Account Analytics Read + Zone Analytics Read for the GraphQL queries).
-    return (await getEnv("CF_API_TOKEN")) || requireEnv("CLOUDFLARE_API_TOKEN");
+    return requireEnv("CF_API_TOKEN");
 }
 
 export async function getAccountId(): Promise<string> {
