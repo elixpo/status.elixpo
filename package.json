@@ -1,15 +1,15 @@
 {
-    "name": "elixpo-admin",
-    "version": "1.2.15",
+    "name": "status.elixpo",
+    "version": "1.2.10",
     "private": true,
-    "description": "Elixpo Admin — the admin control plane for the Elixpo Cloudflare account. Auto-discovers every Pages project, Worker, D1, KV, Queue, Durable Object and Workflow, and surfaces full Cloudflare observability with a public status page. Gated to accounts.elixpo admins only.",
-    "homepage": "https://admin.elixpo.com",
+    "description": "Elixpo Status — the public, Cloudflare-native status page for every Elixpo service. Auto-discovers each Pages project and Worker-backed domain (elixpo.com, blogs, sketch, accounts, payouts, mail, portfolio and more) and reports live operational health and uptime history straight from Cloudflare edge analytics — no third-party uptime tool. Deployed on Cloudflare Pages at status.elixpo.com.",
+    "homepage": "https://status.elixpo.com",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Circuit-Overtime/admin.elixpo.git"
+        "url": "git+https://github.com/elixpo/status.elixpo.git"
     },
     "bugs": {
-        "url": "https://github.com/Circuit-Overtime/admin.elixpo/issues"
+        "url": "https://github.com/elixpo/status.elixpo/issues"
     },
     "author": {
         "name": "Elixpo",

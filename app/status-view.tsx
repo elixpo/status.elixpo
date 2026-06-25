@@ -1,0 +1,555 @@
+"use client";
+
+/** Public status page — light, commercial (Atlassian Statuspage style).
+ * Every Elixpo service renders as its own card with a real uptime history bar:
+ * 90 daily cells for the base platform (elixpo.com), 24 hourly cells for the
+ * sub-services (which only retain short-window edge analytics). */
+
+import type { ChangeLogItem } from "@/lib/changelog";
+import type { DayPoint } from "@/lib/metrics";
+import { GitHub, OpenInNew } from "@mui/icons-material";
+import { Box, Typography } from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+
+const REPO = "https://github.com/elixpo/status.elixpo";
+
+const L = {
+    bg: "#faf9f7",
+    card: "#ffffff",
+    border: "#e7e5e4",
+    text: "#1c1917",
+    muted: "#78716c",
+    green: "#16a34a",
+    amber: "#d97706",
+    red: "#dc2626",
+    grey: "#d6d3d1",
+};
+
+const theme = createTheme({
+    palette: { mode: "light" },
+    typography: { fontFamily: "var(--font-geist-sans), Arial, sans-serif" },
+});
+
+export type Health = "operational" | "degraded" | "outage" | "idle";
+
+export interface ProductStatus {
+    label: string;
+    domain?: string;
+    repo?: string;
+    health: Health;
+    /** "90d" → daily cells; "24h" → hourly cells. */
+    window: "90d" | "24h";
+    days: DayPoint[];
+    uptimePct: number;
+    seriesAvailable: boolean;
+    total: number;
+}
+
+const HEALTH: Record<Health, { color: string; label: string }> = {
+    operational: { color: L.green, label: "Operational" },
+    degraded: { color: L.amber, label: "Degraded performance" },
+    outage: { color: L.red, label: "Outage" },
+    idle: { color: L.muted, label: "No traffic" },
+};
+
+function cellColor(d: DayPoint): string {
+    if (d.total === 0) return L.grey;
+    const r = d.errors / d.total;
+    if (r >= 0.05) return L.red;
+    if (r >= 0.01) return L.amber;
+    return L.green;
+}
+
+function fmtCell(d: DayPoint | null, window: "90d" | "24h"): string {
+    if (!d) return "no data";
+    const when =
+        window === "90d"
+            ? d.date
+            : new Date(d.date).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+              });
+    const pct =
+        d.total > 0
+            ? `${(((d.total - d.errors) / d.total) * 100).toFixed(2)}%`
+            : "—";
+    const unit = window === "90d" ? "req" : "req/h";
+    return `${when} · ${pct} · ${d.total.toLocaleString()} ${unit}`;
+}
+
+function UptimeBars({
+    days,
+    target,
+    window,
+}: { days: DayPoint[]; target: number; window: "90d" | "24h" }) {
+    // Pad the left with "no data" cells so every strip is full width.
+    const pad = Math.max(0, target - days.length);
+    const cells = [
+        ...Array.from({ length: pad }, () => null),
+        ...days.slice(-target),
+    ];
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                alignItems: "stretch",
+                gap: "2px",
+                height: 34,
+            }}
+        >
+            {cells.map((d, i) => (
+                <Box
+                    key={i}
+                    title={fmtCell(d, window)}
+                    sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        borderRadius: "2px",
+                        bgcolor: d ? cellColor(d) : L.grey,
+                        opacity: d ? 1 : 0.4,
+                        transition: "transform 0.1s",
+                        "&:hover": { transform: "scaleY(1.12)" },
+                    }}
+                />
+            ))}
+        </Box>
+    );
+}
+
+function relTime(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const days = Math.floor(diff / 86400_000);
+    if (days <= 0) {
+        const hrs = Math.floor(diff / 3600_000);
+        return hrs <= 1 ? "just now" : `${hrs}h ago`;
+    }
+    if (days === 1) return "yesterday";
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return months === 1 ? "1 month ago" : `${months} months ago`;
+}
+
+function ServiceCard({ p }: { p: ProductStatus }) {
+    const h = HEALTH[p.health];
+    const is90 = p.window === "90d";
+    return (
+        <Box
+            sx={{
+                bgcolor: L.card,
+                border: `1px solid ${L.border}`,
+                borderRadius: "10px",
+                p: 2.5,
+            }}
+        >
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                    mb: 1.5,
+                    flexWrap: "wrap",
+                }}
+            >
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.25,
+                        minWidth: 0,
+                    }}
+                >
+                    <Box
+                        sx={{
+                            width: 9,
+                            height: 9,
+                            borderRadius: "50%",
+                            bgcolor: h.color,
+                            flexShrink: 0,
+                        }}
+                    />
+                    <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+                        {p.label}
+                    </Typography>
+                    {p.domain && (
+                        <Box
+                            component="a"
+                            href={`https://${p.domain}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            sx={{
+                                color: L.muted,
+                                fontSize: "0.78rem",
+                                textDecoration: "none",
+                                "&:hover": { color: L.text },
+                            }}
+                        >
+                            {p.domain}
+                        </Box>
+                    )}
+                </Box>
+                <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                >
+                    <Typography
+                        sx={{
+                            color: h.color,
+                            fontWeight: 700,
+                            fontSize: "0.88rem",
+                        }}
+                    >
+                        {h.label}
+                    </Typography>
+                    {p.repo && (
+                        <Box
+                            component="a"
+                            href={`${p.repo}/issues`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Issues"
+                            sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                color: L.muted,
+                                textDecoration: "none",
+                                "&:hover": { color: L.text },
+                            }}
+                        >
+                            <GitHub sx={{ fontSize: "1rem" }} />
+                        </Box>
+                    )}
+                </Box>
+            </Box>
+
+            {p.seriesAvailable ? (
+                <>
+                    <UptimeBars
+                        days={p.days}
+                        target={is90 ? 90 : 24}
+                        window={p.window}
+                    />
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            mt: 1,
+                        }}
+                    >
+                        <Typography
+                            sx={{ color: L.muted, fontSize: "0.74rem" }}
+                        >
+                            {is90 ? "90 days ago" : "24 hours ago"}
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: L.muted,
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                            }}
+                        >
+                            {p.total > 0
+                                ? `${p.uptimePct.toFixed(2)}% uptime`
+                                : "no traffic"}
+                        </Typography>
+                        <Typography
+                            sx={{ color: L.muted, fontSize: "0.74rem" }}
+                        >
+                            {is90 ? "Today" : "Now"}
+                        </Typography>
+                    </Box>
+                </>
+            ) : (
+                <Typography sx={{ color: L.muted, fontSize: "0.82rem" }}>
+                    Uptime history unavailable.
+                </Typography>
+            )}
+        </Box>
+    );
+}
+
+export default function StatusView({
+    products,
+    changelogs,
+    fetchedAt,
+}: {
+    products: ProductStatus[];
+    changelogs: ChangeLogItem[];
+    fetchedAt: number;
+}) {
+    const worst: Health = products.some((p) => p.health === "outage")
+        ? "outage"
+        : products.some((p) => p.health === "degraded")
+          ? "degraded"
+          : "operational";
+    const allOk = worst === "operational";
+
+    return (
+        <ThemeProvider theme={theme}>
+            <Box sx={{ minHeight: "100dvh", bgcolor: L.bg, color: L.text }}>
+                <Box
+                    sx={{
+                        maxWidth: 880,
+                        mx: "auto",
+                        px: { xs: 2, md: 3 },
+                        py: { xs: 4, md: 7 },
+                    }}
+                >
+                    {/* header */}
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            mb: 5,
+                            flexWrap: "wrap",
+                            gap: 2,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1.25,
+                            }}
+                        >
+                            <Box
+                                component="img"
+                                src="/icon.png"
+                                alt="Elixpo"
+                                sx={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: "7px",
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    fontWeight: 800,
+                                    fontSize: "1.5rem",
+                                    letterSpacing: "-0.02em",
+                                }}
+                            >
+                                Elixpo Status
+                            </Typography>
+                        </Box>
+                        <Box
+                            title="Coming soon"
+                            sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 1,
+                                height: 40,
+                                px: 2,
+                                borderRadius: "8px",
+                                bgcolor: "#e7e5e4",
+                                color: L.muted,
+                                cursor: "not-allowed",
+                                fontSize: "0.8rem",
+                                fontWeight: 700,
+                                letterSpacing: "0.06em",
+                                textTransform: "uppercase",
+                            }}
+                        >
+                            Subscribe · coming soon
+                        </Box>
+                    </Box>
+
+                    {/* overall banner */}
+                    <Box
+                        sx={{
+                            mb: 5,
+                            borderRadius: "10px",
+                            overflow: "hidden",
+                            border: `1px solid ${allOk ? L.green : L.amber}`,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                px: 2.5,
+                                py: 2,
+                                bgcolor: allOk ? L.green : L.amber,
+                                color: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                            }}
+                        >
+                            <Typography
+                                sx={{ fontWeight: 700, fontSize: "1.05rem" }}
+                            >
+                                {allOk
+                                    ? "All systems operational"
+                                    : worst === "outage"
+                                      ? "Active incident on some services"
+                                      : "Some services degraded"}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ px: 2.5, py: 1.25, bgcolor: L.card }}>
+                            <Typography
+                                sx={{ color: L.muted, fontSize: "0.8rem" }}
+                            >
+                                Live from Cloudflare edge analytics · updated{" "}
+                                {new Date(fetchedAt).toLocaleString()}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    {/* per-service cards */}
+                    <Typography
+                        sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1.5 }}
+                    >
+                        Services
+                    </Typography>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 1.5,
+                        }}
+                    >
+                        {products.map((p) => (
+                            <ServiceCard key={p.domain || p.label} p={p} />
+                        ))}
+                    </Box>
+
+                    {/* recent changes (from gist changelogs) */}
+                    {changelogs.length > 0 && (
+                        <>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    mt: 4,
+                                    mb: 1.5,
+                                }}
+                            >
+                                <Typography
+                                    sx={{
+                                        fontWeight: 700,
+                                        fontSize: "0.95rem",
+                                    }}
+                                >
+                                    Recent changes
+                                </Typography>
+                                <Box
+                                    component="a"
+                                    href="https://gist.github.com/elixpoo"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    sx={{
+                                        color: L.muted,
+                                        fontSize: "0.78rem",
+                                        textDecoration: "none",
+                                        "&:hover": { color: L.text },
+                                    }}
+                                >
+                                    All changelogs →
+                                </Box>
+                            </Box>
+                            <Box
+                                sx={{
+                                    bgcolor: L.card,
+                                    border: `1px solid ${L.border}`,
+                                    borderRadius: "10px",
+                                    overflow: "hidden",
+                                }}
+                            >
+                                {changelogs.map((c, i) => (
+                                    <Box
+                                        key={c.url}
+                                        component="a"
+                                        href={c.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            gap: 2,
+                                            px: 2.5,
+                                            py: 1.5,
+                                            textDecoration: "none",
+                                            borderTop:
+                                                i === 0
+                                                    ? "none"
+                                                    : `1px solid ${L.border}`,
+                                            "&:hover": { bgcolor: "#faf9f7" },
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 1.25,
+                                                minWidth: 0,
+                                            }}
+                                        >
+                                            <GitHub
+                                                sx={{
+                                                    fontSize: "1rem",
+                                                    color: L.muted,
+                                                }}
+                                            />
+                                            <Typography
+                                                sx={{
+                                                    color: L.text,
+                                                    fontSize: "0.88rem",
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                {c.project}
+                                            </Typography>
+                                            <Typography
+                                                sx={{
+                                                    color: L.muted,
+                                                    fontSize: "0.8rem",
+                                                }}
+                                            >
+                                                changelog updated
+                                            </Typography>
+                                        </Box>
+                                        <Typography
+                                            sx={{
+                                                color: L.muted,
+                                                fontSize: "0.78rem",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {relTime(c.updatedAt)}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </>
+                    )}
+
+                    {/* footer */}
+                    <Box sx={{ mt: 4, textAlign: "center" }}>
+                        <Box
+                            component="a"
+                            href={`${REPO}/issues/new`}
+                            target="_blank"
+                            rel="noreferrer"
+                            sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 1,
+                                color: L.muted,
+                                textDecoration: "none",
+                                fontSize: "0.82rem",
+                                "&:hover": { color: L.text },
+                            }}
+                        >
+                            <OpenInNew sx={{ fontSize: "1rem" }} />
+                            Every Elixpo service is open source — report an
+                            issue
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+        </ThemeProvider>
+    );
+}

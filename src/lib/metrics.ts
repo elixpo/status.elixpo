@@ -472,6 +472,72 @@ export async function zoneDailyUptime(
     });
 }
 
+/**
+ * Per-host hourly uptime over the last N hours (httpRequestsAdaptiveGroups,
+ * scoped to one domain). Returns a full N-cell grid — hours with no traffic are
+ * emitted as zero-request cells so the bar strip stays aligned to real time.
+ * Used for sub-pages, which only have short-window edge analytics retention.
+ */
+export async function zoneHourlyUptime(
+    zoneTag: string,
+    host: string,
+    hours = 24,
+): Promise<DailyUptime> {
+    return cached(`hu:${zoneTag}:${host}:${hours}`, METRIC_TTL, async () => {
+        try {
+            const w = lastHours(hours);
+            const data = await run<any>(
+                `query($z:String!,$s:Time!,$u:Time!,$h:string!){viewer{zones(filter:{zoneTag:$z}){
+                    httpRequestsAdaptiveGroups(limit:5000,
+                        filter:{datetime_geq:$s,datetime_leq:$u,clientRequestHTTPHost:$h},
+                        orderBy:[datetimeHour_ASC]){
+                        count
+                        dimensions{datetimeHour edgeResponseStatus}
+                    }
+                }}}`,
+                { z: zoneTag, s: w.since, u: w.until, h: host },
+            );
+            const rows =
+                data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
+            // Aggregate (hour → total/5xx). Key on the "YYYY-MM-DDTHH" prefix so
+            // it lines up with the grid we synthesize below.
+            const byHour = new Map<string, { total: number; errors: number }>();
+            for (const r of rows) {
+                const hour = String(r.dimensions.datetimeHour).slice(0, 13);
+                const status = Number(r.dimensions.edgeResponseStatus);
+                const c = r.count ?? 0;
+                const cur = byHour.get(hour) || { total: 0, errors: 0 };
+                cur.total += c;
+                if (status >= 500) cur.errors += c;
+                byHour.set(hour, cur);
+            }
+            const now = Date.now();
+            const days: DayPoint[] = [];
+            for (let i = hours - 1; i >= 0; i--) {
+                const key = new Date(now - i * 3600_000)
+                    .toISOString()
+                    .slice(0, 13);
+                const v = byHour.get(key) || { total: 0, errors: 0 };
+                days.push({ date: `${key}:00Z`, total: v.total, errors: v.errors });
+            }
+            const t = days.reduce((a, d) => a + d.total, 0);
+            const e = days.reduce((a, d) => a + d.errors, 0);
+            return {
+                available: true,
+                days,
+                uptimePct: t > 0 ? ((t - e) / t) * 100 : 100,
+            };
+        } catch (err) {
+            return {
+                available: false,
+                error: (err as Error).message,
+                days: [],
+                uptimePct: 100,
+            };
+        }
+    });
+}
+
 /* --------------------------------------------------------------- DNS / zone */
 
 export async function dnsAnalytics(
