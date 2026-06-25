@@ -130,16 +130,18 @@ function relTime(iso: string): string {
     return months === 1 ? "1 month ago" : `${months} months ago`;
 }
 
-function ServiceCard({ p }: { p: ProductStatus }) {
+function ServiceCard({ p, hero = false }: { p: ProductStatus; hero?: boolean }) {
     const h = HEALTH[p.health];
     const is90 = p.window === "90d";
     return (
         <Box
             sx={{
-                bgcolor: L.card,
-                border: `1px solid ${L.border}`,
-                borderRadius: "10px",
-                p: 2.5,
+                bgcolor: hero ? "#fbfdfc" : L.card,
+                border: `1px solid ${hero ? h.color : L.border}`,
+                borderLeft: hero ? `4px solid ${h.color}` : undefined,
+                borderRadius: hero ? "12px" : "10px",
+                p: hero ? { xs: 2.5, md: 3 } : 2.5,
+                boxShadow: hero ? "0 1px 2px rgba(28,25,23,0.04)" : "none",
             }}
         >
             <Box
@@ -148,7 +150,7 @@ function ServiceCard({ p }: { p: ProductStatus }) {
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 2,
-                    mb: 1.5,
+                    mb: hero ? 2 : 1.5,
                     flexWrap: "wrap",
                 }}
             >
@@ -160,16 +162,41 @@ function ServiceCard({ p }: { p: ProductStatus }) {
                         minWidth: 0,
                     }}
                 >
-                    <Box
+                    {hero ? (
+                        <Box
+                            sx={{
+                                px: 1,
+                                py: 0.4,
+                                borderRadius: "6px",
+                                bgcolor: h.color,
+                                color: "#fff",
+                                fontSize: "0.62rem",
+                                fontWeight: 800,
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                lineHeight: 1,
+                            }}
+                        >
+                            Platform
+                        </Box>
+                    ) : (
+                        <Box
+                            sx={{
+                                width: 9,
+                                height: 9,
+                                borderRadius: "50%",
+                                bgcolor: h.color,
+                                flexShrink: 0,
+                            }}
+                        />
+                    )}
+                    <Typography
                         sx={{
-                            width: 9,
-                            height: 9,
-                            borderRadius: "50%",
-                            bgcolor: h.color,
-                            flexShrink: 0,
+                            fontWeight: hero ? 800 : 700,
+                            fontSize: hero ? "1.25rem" : "1rem",
+                            letterSpacing: hero ? "-0.01em" : 0,
                         }}
-                    />
-                    <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+                    >
                         {p.label}
                     </Typography>
                     {p.domain && (
@@ -180,7 +207,7 @@ function ServiceCard({ p }: { p: ProductStatus }) {
                             rel="noreferrer"
                             sx={{
                                 color: L.muted,
-                                fontSize: "0.78rem",
+                                fontSize: hero ? "0.84rem" : "0.78rem",
                                 textDecoration: "none",
                                 "&:hover": { color: L.text },
                             }}
@@ -196,7 +223,7 @@ function ServiceCard({ p }: { p: ProductStatus }) {
                         sx={{
                             color: h.color,
                             fontWeight: 700,
-                            fontSize: "0.88rem",
+                            fontSize: hero ? "0.98rem" : "0.88rem",
                         }}
                     >
                         {h.label}
@@ -285,6 +312,11 @@ export default function StatusView({
           ? "degraded"
           : "operational";
     const allOk = worst === "operational";
+
+    // The base platform (elixpo.com, 90-day history) renders as a distinct hero
+    // card; everything else stacks below it.
+    const base = products.find((p) => p.window === "90d");
+    const rest = products.filter((p) => p !== base);
 
     return (
         <ThemeProvider theme={theme}>
@@ -397,6 +429,13 @@ export default function StatusView({
                         </Box>
                     </Box>
 
+                    {/* base platform — distinct hero card */}
+                    {base && (
+                        <Box sx={{ mb: 4 }}>
+                            <ServiceCard p={base} hero />
+                        </Box>
+                    )}
+
                     {/* per-service cards */}
                     <Typography
                         sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1.5 }}
@@ -410,7 +449,7 @@ export default function StatusView({
                             gap: 1.5,
                         }}
                     >
-                        {products.map((p) => (
+                        {rest.map((p) => (
                             <ServiceCard key={p.domain || p.label} p={p} />
                         ))}
                     </Box>

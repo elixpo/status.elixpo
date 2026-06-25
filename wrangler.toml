@@ -4,7 +4,7 @@
 # and mapped to the custom domain status.elixpo.com.
 
 name = "status"
-compatibility_date = "2026-06-26"
+compatibility_date = "2025-06-26"
 # next-on-pages runs the app on the Workers runtime; Node built-ins must resolve.
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
