@@ -19,7 +19,6 @@ next-env.d.ts
 # Local env (secrets) — never commit
 .env.local
 .env*.local
-.env
 
 # Cloudflare next-on-pages build output
 .next-on-pages/
