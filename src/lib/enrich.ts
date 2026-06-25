@@ -100,6 +100,23 @@ export function metaFor(cfName: string): ProjectMeta {
     return META[cfName] || { key: cfName, label: autoLabel(cfName) };
 }
 
+/**
+ * Every known public product domain (registry entries that carry a `domain`).
+ * Used to monitor services regardless of how they're served — Pages auto-
+ * discovery only sees Pages projects, so Worker-backed hosts (accounts, payouts,
+ * mail, …) are surfaced from here. Deduped by domain, first label wins.
+ */
+export function knownDomains(): Array<ProjectMeta & { domain: string }> {
+    const seen = new Set<string>();
+    const out: Array<ProjectMeta & { domain: string }> = [];
+    for (const m of Object.values(META)) {
+        if (!m.domain || seen.has(m.domain)) continue;
+        seen.add(m.domain);
+        out.push(m as ProjectMeta & { domain: string });
+    }
+    return out;
+}
+
 /** Turn "elixpo-mail" / "lixsketch_collab" into "Elixpo Mail" / "Lixsketch Collab". */
 export function autoLabel(name: string): string {
     return name

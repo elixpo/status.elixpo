@@ -6,7 +6,7 @@
 
 import { fetchChangelogs } from "@/lib/changelog";
 import { discoverAccount } from "@/lib/discovery";
-import { metaFor } from "@/lib/enrich";
+import { knownDomains, metaFor } from "@/lib/enrich";
 import { lastHours, zoneBreakdown, zoneDailyUptime } from "@/lib/metrics";
 import type { Metadata } from "next";
 import StatusView, { type Health, type ProductStatus } from "./status-view";
@@ -104,32 +104,45 @@ export default async function StatusPage() {
         fetchChangelogs(6),
     ]);
 
+    // Build the set of hosts to monitor: every custom domain from discovered
+    // Pages projects, unioned with the known product domains in the registry.
+    // The latter covers services served by Workers/routes (accounts, payouts,
+    // mail, …) that never surface as Pages projects. Zone analytics is queried
+    // per-host, so it works regardless of what serves the domain.
+    const byDomain = new Map<string, { label: string; repo?: string }>();
+    if (zone) {
+        for (const p of inv.pages) {
+            const domain = p.domains?.find((d) => !d.endsWith(".pages.dev"));
+            if (!domain) continue;
+            const meta = metaFor(p.name);
+            byDomain.set(domain, { label: meta.label, repo: meta.repo });
+        }
+        for (const m of knownDomains()) {
+            const inZone =
+                m.domain === zone.name || m.domain.endsWith(`.${zone.name}`);
+            if (inZone && !byDomain.has(m.domain)) {
+                byDomain.set(m.domain, { label: m.label, repo: m.repo });
+            }
+        }
+    }
+
     const products: ProductStatus[] = zone
         ? await Promise.all(
-              inv.pages
-                  .map((p) => ({
-                      p,
-                      domain: p.domains?.find((d) => !d.endsWith(".pages.dev")),
-                  }))
-                  .filter((x) => !!x.domain)
-                  .map(async ({ p, domain }) => {
-                      const b = await zoneBreakdown(zone.id, w, domain);
-                      const { total, fivexx } = classify(b.status);
-                      const meta = metaFor(p.name);
-                      return {
-                          label: meta.label,
-                          domain,
-                          repo: meta.repo,
-                          total,
-                          fivexx,
-                          availability:
-                              total > 0
-                                  ? ((total - fivexx) / total) * 100
-                                  : 100,
-                          health: health(total, fivexx),
-                          status: b.status,
-                      } as ProductStatus & { fivexx: number };
-                  }),
+              [...byDomain.entries()].map(async ([domain, meta]) => {
+                  const b = await zoneBreakdown(zone.id, w, domain);
+                  const { total, fivexx } = classify(b.status);
+                  return {
+                      label: meta.label,
+                      domain,
+                      repo: meta.repo,
+                      total,
+                      fivexx,
+                      availability:
+                          total > 0 ? ((total - fivexx) / total) * 100 : 100,
+                      health: health(total, fivexx),
+                      status: b.status,
+                  } as ProductStatus & { fivexx: number };
+              }),
           )
         : [];
 
