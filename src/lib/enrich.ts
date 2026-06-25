@@ -22,7 +22,7 @@ const META: Record<string, ProjectMeta> = {
     // Pages projects
     elixpo: {
         key: "elixpo",
-        label: "Elixpo (Base)",
+        label: "Elixpo",
         domain: "elixpo.com",
         repo: `${GH}/elixpo`,
     },
@@ -40,19 +40,13 @@ const META: Record<string, ProjectMeta> = {
     },
     "lixsketch-collab": {
         key: "sketch",
-        label: "Sketch Collab (Worker)",
+        label: "Sketch Collab",
         domain: "sketch.elixpo.com",
         repo: `${GH}/sketch.elixpo`,
     },
-    elixpourl: {
-        key: "url",
-        label: "URL Shortener",
-        domain: "url.elixpo.com",
-        repo: `${GH}/url.elixpo`,
-    },
     "elixpo-accounts": {
         key: "accounts",
-        label: "Accounts (SSO)",
+        label: "Accounts",
         domain: "accounts.elixpo.com",
         repo: `${GH}/accounts.elixpo`,
     },

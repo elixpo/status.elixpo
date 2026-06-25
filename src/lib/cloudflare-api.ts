@@ -47,7 +47,10 @@ export class CloudflareApiError extends Error {
 }
 
 async function token(): Promise<string> {
-    return requireEnv("CF_API_TOKEN");
+    // Prefer the dedicated, analytics-scoped read token; fall back to the
+    // wrangler/CI token so a single-token setup still works (it must carry
+    // Account Analytics Read + Zone Analytics Read for the GraphQL queries).
+    return (await getEnv("CF_API_TOKEN")) || requireEnv("CLOUDFLARE_API_TOKEN");
 }
 
 export async function getAccountId(): Promise<string> {

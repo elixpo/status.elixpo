@@ -109,6 +109,8 @@ export default async function StatusPage() {
     const changelogs = await fetchChangelogs(6);
 
     const BASE = "elixpo.com";
+    // Domains we never surface on the public status page.
+    const EXCLUDE = new Set(["url.elixpo.com"]);
 
     // Canonical service list — built from the registry's known product domains
     // unioned with discovered Pages projects. This is INDEPENDENT of zone
@@ -118,12 +120,13 @@ export default async function StatusPage() {
     const byDomain = new Map<string, { label: string; repo?: string }>();
     for (const p of inv.pages) {
         const domain = p.domains?.find((d) => !d.endsWith(".pages.dev"));
-        if (!domain) continue;
+        if (!domain || EXCLUDE.has(domain)) continue;
         const meta = metaFor(p.name);
         byDomain.set(domain, { label: meta.label, repo: meta.repo });
     }
     for (const m of knownDomains()) {
         if (m.domain !== BASE && !m.domain.endsWith(`.${BASE}`)) continue;
+        if (EXCLUDE.has(m.domain)) continue;
         if (!byDomain.has(m.domain)) {
             byDomain.set(m.domain, { label: m.label, repo: m.repo });
         }
