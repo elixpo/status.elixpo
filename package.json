@@ -30,6 +30,8 @@
         "dev": "next dev",
         "build": "next build",
         "pages:build": "npx @cloudflare/next-on-pages",
+        "pages:deploy": "npm run pages:build && wrangler pages deploy",
+        "pages:preview": "npm run pages:build && wrangler pages dev",
         "start": "next start",
         "lint": "biome check .",
         "format": "biome check --write ."
