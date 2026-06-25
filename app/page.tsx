@@ -70,7 +70,51 @@ export const metadata: Metadata = {
     },
 };
 
+/** Rich-result structured data (schema.org). Keeps the org/site graph stable
+ * for crawlers; the live status itself is rendered in the page body. */
+const JSON_LD = {
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "Organization",
+            "@id": "https://elixpo.com/#organization",
+            name: "Elixpo",
+            url: "https://elixpo.com",
+            logo: "https://status.elixpo.com/logo.png",
+            sameAs: ["https://github.com/elixpo"],
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://status.elixpo.com/#website",
+            url: STATUS_URL,
+            name: "Elixpo Status",
+            description: STATUS_DESC,
+            inLanguage: "en",
+            publisher: { "@id": "https://elixpo.com/#organization" },
+        },
+        {
+            "@type": "WebPage",
+            "@id": "https://status.elixpo.com/#webpage",
+            url: STATUS_URL,
+            name: STATUS_TITLE,
+            description: STATUS_DESC,
+            isPartOf: { "@id": "https://status.elixpo.com/#website" },
+            about: { "@id": "https://elixpo.com/#organization" },
+            primaryImageOfPage: "https://status.elixpo.com/og-image.png",
+        },
+    ],
+};
+
 export default async function StatusPage() {
     const initial = await buildStatus();
-    return <StatusView initial={initial} />;
+    return (
+        <>
+            <script
+                type="application/ld+json"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD must be inlined as a script.
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+            />
+            <StatusView initial={initial} />
+        </>
+    );
 }

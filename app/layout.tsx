@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,52 +14,62 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
     title: {
-        default: "Elixpo Admin — Cloudflare Control Plane",
-        template: "%s | Elixpo Admin",
+        default: "Elixpo Status — Live service health & uptime",
+        template: "%s · Elixpo Status",
     },
     description:
-        "The admin control plane for the Elixpo Cloudflare account. Auto-discovers every Pages project, Worker, D1, KV, Queue, Durable Object and Workflow with full observability. Admins only.",
-    applicationName: "Elixpo Admin",
+        "Real-time operational status and uptime history for every Elixpo service — elixpo.com, blogs, sketch, accounts, payouts, mail, portfolio and more. Cloudflare-native, no third-party uptime tool.",
+    applicationName: "Elixpo Status",
     keywords: [
         "Elixpo",
+        "Elixpo status",
+        "status page",
+        "uptime",
+        "service status",
+        "operational status",
+        "incident",
+        "system status",
         "Cloudflare",
-        "admin",
-        "dashboard",
-        "observability",
-        "status",
-        "analytics",
-        "D1",
-        "KV",
-        "Workers",
     ],
     authors: [{ name: "Elixpo", url: "https://elixpo.com" }],
     creator: "Elixpo",
     publisher: "Elixpo",
-    metadataBase: new URL("https://admin.elixpo.com"),
+    category: "technology",
+    metadataBase: new URL("https://status.elixpo.com"),
     alternates: { canonical: "/" },
-    // App is admin-gated → default noindex; the public /status page overrides this.
-    robots: { index: false, follow: false },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+        },
+    },
+    formatDetection: { telephone: false, email: false, address: false },
     openGraph: {
         type: "website",
-        siteName: "Elixpo Admin",
-        title: "Elixpo Admin — Cloudflare Control Plane",
+        siteName: "Elixpo Status",
+        locale: "en_US",
+        title: "Elixpo Status — Live service health & uptime",
         description:
-            "Auto-discovered observability for the entire Elixpo Cloudflare account.",
-        url: "https://admin.elixpo.com",
+            "Real-time operational status and 90-day uptime history for every Elixpo service.",
+        url: "https://status.elixpo.com",
         images: [
             {
                 url: "/og-image.png",
                 width: 1200,
                 height: 630,
-                alt: "Elixpo Admin",
+                alt: "Elixpo Status — live health of every Elixpo service",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "Elixpo Admin — Cloudflare Control Plane",
+        title: "Elixpo Status — Live service health & uptime",
         description:
-            "Auto-discovered observability for the entire Elixpo Cloudflare account.",
+            "Real-time operational status and 90-day uptime history for every Elixpo service.",
         images: ["/og-image.png"],
     },
     icons: {
@@ -71,6 +81,14 @@ export const metadata: Metadata = {
         ],
         apple: { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     },
+    manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+    themeColor: "#faf9f7",
+    colorScheme: "light",
+    width: "device-width",
+    initialScale: 1,
 };
 
 export default function RootLayout({

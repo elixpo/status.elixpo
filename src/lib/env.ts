@@ -27,24 +27,3 @@ export async function requireEnv(name: string): Promise<string> {
     if (!v) throw new Error(`Missing required env var: ${name}`);
     return v;
 }
-
-/** Public app origin, e.g. https://admin.elixpo.com (no trailing slash). */
-export async function appUrl(): Promise<string> {
-    const v = (await getEnv("NEXT_PUBLIC_APP_URL")) || "http://localhost:3000";
-    return v.replace(/\/$/, "");
-}
-
-/** Elixpo Accounts SSO base URL (no trailing slash). */
-export async function accountsUrl(): Promise<string> {
-    const v =
-        (await getEnv("NEXT_PUBLIC_ACCOUNTS_URL")) ||
-        "https://accounts.elixpo.com";
-    return v.replace(/\/$/, "");
-}
-
-/** OAuth redirect URI registered with the Accounts OAuth app. */
-export async function redirectUri(): Promise<string> {
-    const v = await getEnv("NEXT_PUBLIC_REDIRECT_URL");
-    if (v) return v;
-    return `${await appUrl()}/api/auth/callback`;
-}

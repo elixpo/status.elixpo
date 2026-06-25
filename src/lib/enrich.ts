@@ -85,7 +85,6 @@ const META: Record<string, ProjectMeta> = {
     },
     elixpoblogs: { key: "blogs", label: "Blogs DB" },
     lixblogs_db: { key: "blogs", label: "Blogs DB" },
-    elixpourl_db: { key: "url", label: "URL DB" },
     lixsketch_db: { key: "sketch", label: "Sketch DB" },
 };
 
