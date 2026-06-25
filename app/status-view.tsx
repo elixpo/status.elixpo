@@ -5,13 +5,24 @@
  * 90 daily cells for the base platform (elixpo.com), 24 hourly cells for the
  * sub-services (which only retain short-window edge analytics). */
 
-import type { ChangeLogItem } from "@/lib/changelog";
 import type { DayPoint } from "@/lib/metrics";
-import { GitHub, OpenInNew } from "@mui/icons-material";
+import type {
+    Health,
+    ProductStatus,
+    StatusPayload,
+} from "@/lib/status-data";
+import { GitHub, OpenInNew, Refresh } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { useCallback, useEffect, useState } from "react";
 
 const REPO = "https://github.com/elixpo/status.elixpo";
+
+/** Client cache: serve from localStorage within the TTL to avoid re-hitting the
+ * server; the refresh button bypasses this (but not the server KV cache). */
+const LS_KEY = "elixpo-status-cache-v1";
+const LS_TTL = 60 * 60 * 1000; // 1 hour
+const REFRESH_COOLDOWN = 5000; // 5 seconds
 
 const L = {
     bg: "#faf9f7",
@@ -29,21 +40,6 @@ const theme = createTheme({
     palette: { mode: "light" },
     typography: { fontFamily: "var(--font-geist-sans), Arial, sans-serif" },
 });
-
-export type Health = "operational" | "degraded" | "outage" | "idle";
-
-export interface ProductStatus {
-    label: string;
-    domain?: string;
-    repo?: string;
-    health: Health;
-    /** "90d" → daily cells; "24h" → hourly cells. */
-    window: "90d" | "24h";
-    days: DayPoint[];
-    uptimePct: number;
-    seriesAvailable: boolean;
-    total: number;
-}
 
 const HEALTH: Record<Health, { color: string; label: string }> = {
     operational: { color: L.green, label: "Operational" },
@@ -296,15 +292,64 @@ function ServiceCard({ p, hero = false }: { p: ProductStatus; hero?: boolean }) 
     );
 }
 
-export default function StatusView({
-    products,
-    changelogs,
-    fetchedAt,
-}: {
-    products: ProductStatus[];
-    changelogs: ChangeLogItem[];
-    fetchedAt: number;
-}) {
+export default function StatusView({ initial }: { initial: StatusPayload }) {
+    const [data, setData] = useState<StatusPayload>(initial);
+    const [refreshing, setRefreshing] = useState(false);
+    const [cooling, setCooling] = useState(false);
+
+    // On mount: prefer a still-fresh localStorage cache (avoids re-reading the
+    // server within the TTL); otherwise seed the cache from the SSR payload,
+    // which is itself fresh at first paint.
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (raw) {
+                const c = JSON.parse(raw) as {
+                    ts: number;
+                    data: StatusPayload;
+                };
+                if (c?.data && Date.now() - c.ts < LS_TTL) {
+                    setData(c.data);
+                    return;
+                }
+            }
+            localStorage.setItem(
+                LS_KEY,
+                JSON.stringify({ ts: Date.now(), data: initial }),
+            );
+        } catch {
+            // localStorage unavailable (private mode / SSR) — ignore.
+        }
+    }, [initial]);
+
+    // Refresh bypasses localStorage and pulls the JSON feed; rate-limited to one
+    // call per cooldown window. (The server KV cache still applies.)
+    const refresh = useCallback(async () => {
+        if (refreshing || cooling) return;
+        setRefreshing(true);
+        try {
+            const res = await fetch("/api/status", { cache: "no-store" });
+            if (res.ok) {
+                const fresh = (await res.json()) as StatusPayload;
+                setData(fresh);
+                try {
+                    localStorage.setItem(
+                        LS_KEY,
+                        JSON.stringify({ ts: Date.now(), data: fresh }),
+                    );
+                } catch {}
+            }
+        } catch {
+            // network hiccup — keep showing the last good data.
+        } finally {
+            setRefreshing(false);
+            setCooling(true);
+            setTimeout(() => setCooling(false), REFRESH_COOLDOWN);
+        }
+    }, [refreshing, cooling]);
+
+    const { products, changelogs, fetchedAt } = data;
+
     const worst: Health = products.some((p) => p.health === "outage")
         ? "outage"
         : products.some((p) => p.health === "degraded")
@@ -418,13 +463,74 @@ export default function StatusView({
                                       : "Some services degraded"}
                             </Typography>
                         </Box>
-                        <Box sx={{ px: 2.5, py: 1.25, bgcolor: L.card }}>
+                        <Box
+                            sx={{
+                                px: 2.5,
+                                py: 1.25,
+                                bgcolor: L.card,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 2,
+                                flexWrap: "wrap",
+                            }}
+                        >
                             <Typography
                                 sx={{ color: L.muted, fontSize: "0.8rem" }}
                             >
                                 Live from Cloudflare edge analytics · updated{" "}
                                 {new Date(fetchedAt).toLocaleString()}
                             </Typography>
+                            <Box
+                                component="button"
+                                onClick={refresh}
+                                disabled={refreshing || cooling}
+                                title={
+                                    cooling
+                                        ? "Please wait a few seconds"
+                                        : "Fetch the latest status"
+                                }
+                                sx={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 0.75,
+                                    px: 1.5,
+                                    py: 0.75,
+                                    borderRadius: "8px",
+                                    border: `1px solid ${L.border}`,
+                                    bgcolor: L.bg,
+                                    color: L.text,
+                                    font: "inherit",
+                                    fontSize: "0.78rem",
+                                    fontWeight: 600,
+                                    cursor:
+                                        refreshing || cooling
+                                            ? "not-allowed"
+                                            : "pointer",
+                                    opacity: refreshing || cooling ? 0.55 : 1,
+                                    transition: "background 0.12s",
+                                    "&:hover": {
+                                        bgcolor:
+                                            refreshing || cooling
+                                                ? L.bg
+                                                : "#f0eeec",
+                                    },
+                                }}
+                            >
+                                <Refresh
+                                    sx={{
+                                        fontSize: "1rem",
+                                        animation: refreshing
+                                            ? "elxspin 0.8s linear infinite"
+                                            : "none",
+                                        "@keyframes elxspin": {
+                                            from: { transform: "rotate(0deg)" },
+                                            to: { transform: "rotate(360deg)" },
+                                        },
+                                    }}
+                                />
+                                {refreshing ? "Refreshing…" : "Refresh"}
+                            </Box>
                         </Box>
                     </Box>
 
