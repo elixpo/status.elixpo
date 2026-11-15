@@ -123,7 +123,8 @@ async function zoneSeries(
             for (const r of d?.viewer?.zones?.[0]?.g ?? []) {
                 const host = String(r.dimensions.clientRequestHTTPHost);
                 const raw = String(r.dimensions[dim]);
-                const bucket = dim === "date" ? raw.slice(0, 10) : raw.slice(0, 13);
+                const bucket =
+                    dim === "date" ? raw.slice(0, 10) : raw.slice(0, 13);
                 const status = Number(r.dimensions.edgeResponseStatus);
                 const hm = by.get(host) || new Map();
                 const cur = hm.get(bucket) || { total: 0, errors: 0 };
@@ -205,8 +206,12 @@ export async function buildStatus(): Promise<StatusPayload> {
     const until = new Date(now);
     // Hourly: from the start of the hour 23h ago. Daily: 30 days back (the
     // maximum range these zones allow), aligned to the hour for cache reuse.
-    const hourSince = new Date(hourNow.getTime() - (RECENT_HOURS - 1) * 3600_000);
-    const daySince = new Date(hourNow.getTime() - (HISTORY_DAYS * 24 - 1) * 3600_000);
+    const hourSince = new Date(
+        hourNow.getTime() - (RECENT_HOURS - 1) * 3600_000,
+    );
+    const daySince = new Date(
+        hourNow.getTime() - (HISTORY_DAYS * 24 - 1) * 3600_000,
+    );
 
     // Group hosts by the zone that owns them.
     const zones = inv?.zones ?? [];
@@ -222,7 +227,10 @@ export async function buildStatus(): Promise<StatusPayload> {
     }
 
     // Two queries per zone, all in parallel.
-    const perZone = new Map<string, { hourly: ZoneSeries; daily: ZoneSeries }>();
+    const perZone = new Map<
+        string,
+        { hourly: ZoneSeries; daily: ZoneSeries }
+    >();
     await Promise.all(
         [...hostsByZone.entries()].map(async ([zoneId, hosts]) => {
             const sorted = [...hosts].sort();
@@ -241,11 +249,7 @@ export async function buildStatus(): Promise<StatusPayload> {
         ([domain, meta]) => {
             const z = zoneOf(domain);
             const series = z ? perZone.get(z.id) : undefined;
-            const hours = fill(
-                hKeys,
-                series?.hourly.counts[domain],
-                ":00:00Z",
-            );
+            const hours = fill(hKeys, series?.hourly.counts[domain], ":00:00Z");
             const days = fill(dKeys, series?.daily.counts[domain], "");
             const sum = (pts: DayPoint[]) =>
                 pts.reduce(
