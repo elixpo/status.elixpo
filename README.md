@@ -62,6 +62,19 @@ The page reports what the configured Cloudflare analytics source can observe.
 When that source cannot be reached, the public service directory remains
 available and the page explicitly withholds an operational conclusion.
 
+### Running this locally
+
+```bash
+npm install
+npm run dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
+
+It is built with Next.js and deployed on Cloudflare Pages. Production deploys run
+automatically from CI on every push to `main` (`.github/workflows/deploy.yml`, through
+Elixpo's shared deploy workflows); `wrangler.toml` holds the Pages configuration.
+
 ## The ecosystem
 
 | Tool | What it does | Link |
@@ -153,6 +166,11 @@ projects. Current roles and attributable work are published in the
 Everyone is welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** and our
 **[Code of Conduct](CODE_OF_CONDUCT.md)**.
 
+## Recognition & programs
+
+Elixpo has taken part in and been supported by **GSSOC**, **Hacktoberfest**,
+**Pollinations.AI**, **MS Startup Foundations**, and **OSCI**.
+
 ## Get involved
 
 - 💬 **Join the conversation** in [GitHub Discussions](https://github.com/orgs/elixpo/discussions).
@@ -185,18 +203,6 @@ notice board, [`NOTICE`](LICENSES/NOTICE).
 **This repository:** None - it is the source for a hosted status page.
 
 ---
-
-## Running this locally
-
-```bash
-npm install
-npm run dev
-```
-
-Then open [http://localhost:3000](http://localhost:3000).
-
-For deploys: this is built with Next.js and deployed on Cloudflare Pages — see
-`wrangler.toml` for the deploy config and run `npm run pages:deploy` to publish.
 
 <p align="center">
   <sub>Made in the open, together. © 2023-2026 Elixpo.</sub>
